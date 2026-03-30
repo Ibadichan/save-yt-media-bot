@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { createReadStream, existsSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -32,6 +32,7 @@ const {
   DONATE_CARD,
   DONATE_PEREVODILKA,
   BOT_USERNAME,
+  ADMIN_ID,
 } = process.env;
 
 const MAX_VIDEO_DURATION_SEC = process.env.MAX_VIDEO_DURATION_MIN
@@ -55,9 +56,6 @@ function buildYtdlpArgs(extraArgs = []) {
   if (existsSync(COOKIES_FILE)) {
     args.push('--cookies', COOKIES_FILE);
   }
-  // if (PROXY_URL) {
-  //   args.push('--proxy', PROXY_URL);
-  // }
   return [...args, ...extraArgs];
 }
 
@@ -272,7 +270,8 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
     } catch (error) {
       errorSize += 1;
       console.error(error);
-      const brief = (error.message ?? '').split('\n')[0].slice(0, 200);
+      const stderr = (error.stderr ?? '').trim();
+      const brief = (stderr || (error.message ?? '')).split('\n').filter(l => l.trim()).at(-1)?.slice(0, 200) ?? '';
       const msg = error.error_code === 413
         ? translations[lang].errors.file_too_large
         : `${translations[lang].status.error} (${brief})`;
@@ -400,6 +399,23 @@ bot.callbackQuery('donate:other', async (ctx) => {
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
 });
 
+bot.on('message:document', async (ctx) => {
+  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) return;
+  const doc = ctx.message.document;
+  if (doc.file_name !== 'cookies.txt') {
+    await ctx.reply('Файл должен называться cookies.txt');
+    return;
+  }
+  const file = await ctx.getFile();
+  const apiBase = (TELEGRAM_API_URL ?? 'https://api.telegram.org').replace(/\/$/, '');
+  const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+  const text = await res.text();
+  await writeFile(COOKIES_FILE, text);
+  await ctx.reply(`cookies.txt обновлён (${text.split('\n').filter(l => l && !l.startsWith('#')).length} строк)`);
+});
+
 bot.on('message', async (ctx) => {
   const userId = ctx.from.id;
   const url = ctx.message.text?.trim();
@@ -475,7 +491,8 @@ bot.on('message', async (ctx) => {
     }
   } catch (error) {
     console.error(error);
-    const brief = (error.message ?? '').split('\n')[0].slice(0, 200);
+    const stderr = (error.stderr ?? '').trim();
+    const brief = (stderr || (error.message ?? '')).split('\n').filter(l => l.trim()).at(-1)?.slice(0, 200) ?? '';
     await ctx.reply(`${translations[lang].status.error} (${brief})`);
   }
 });
