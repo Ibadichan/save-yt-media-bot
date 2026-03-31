@@ -50,11 +50,6 @@ const translations = {
     help: {
       text: "📋 <b>How to use the bot</b>\n\nSend a YouTube video or playlist link — I'll show quality options.\n\n<b>Supported:</b>\n• Regular videos\n• Playlists (quality from first video applies to all)\n• Audio-only (great for podcasts and audiobooks)\n\n<b>Limitations:</b>\n• Very long videos can only be downloaded as audio\n• Age-restricted or region-locked videos may fail\n\n<b>If something goes wrong:</b>\n• Try a lower quality\n• Resend the link\n• Use /start to reset if the bot seems stuck",
     },
-    admin: {
-      setcookies_prompt: "Send the contents of cookies.txt as the next message",
-      setcookies_empty: "Empty message, try again with /setcookies",
-      setcookies_saved: (lines) => `cookies.txt updated (${lines} lines)`,
-    },
   },
   ru: {
     greeting: "Привет! Я бот для скачивания YouTube видео/аудио.",
@@ -106,11 +101,6 @@ const translations = {
     },
     help: {
       text: "📋 <b>Как пользоваться ботом</b>\n\nОтправь ссылку на YouTube видео или плейлист — я покажу варианты качества.\n\n<b>Поддерживается:</b>\n• Обычные видео\n• Плейлисты (качество выбирается по первому видео)\n• Только аудио (удобно для подкастов и аудиокниг)\n\n<b>Ограничения:</b>\n• Очень длинные видео можно скачать только как аудио\n• Видео с возрастным ограничением или региональной блокировкой могут не работать\n\n<b>Если что-то пошло не так:</b>\n• Попробуй другое качество\n• Отправь ссылку ещё раз\n• Используй /start чтобы сбросить бота, если он завис",
-    },
-    admin: {
-      setcookies_prompt: "Отправь содержимое cookies.txt следующим сообщением",
-      setcookies_empty: "Пустое сообщение, попробуй ещё раз /setcookies",
-      setcookies_saved: (lines) => `cookies.txt обновлён (${lines} строк)`,
     },
   },
 };

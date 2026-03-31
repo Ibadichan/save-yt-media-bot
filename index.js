@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { createReadStream, existsSync } from 'fs';
-import { unlink, writeFile } from 'fs/promises';
+import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -32,7 +32,6 @@ const {
   DONATE_CARD,
   DONATE_PEREVODILKA,
   BOT_USERNAME,
-  ADMIN_ID,
 } = process.env;
 
 const MAX_VIDEO_DURATION_SEC = process.env.MAX_VIDEO_DURATION_MIN
@@ -151,7 +150,6 @@ async function downloadAudioOnly(url) {
 
 const pendingMap = new Map(); // Map<userId, { videos: { url, title }[], thumbnailUrl, qualityLabels, audioAvailable, duration }>
 const downloadCountMap = new Map(); // Map<userId, number>
-let awaitingCookies = false;
 
 function getLang(ctx) {
   return ctx.from?.language_code === 'ru' ? 'ru' : 'en';
@@ -400,31 +398,12 @@ bot.callbackQuery('donate:other', async (ctx) => {
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
 });
 
-bot.command('setcookies', async (ctx) => {
-  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) return;
-  awaitingCookies = true;
-  await ctx.reply(translations[getLang(ctx)].admin.setcookies_prompt);
-});
-
 bot.on('message', async (ctx) => {
   const userId = ctx.from.id;
   const url = ctx.message.text?.trim();
   const lang = getLang(ctx);
 
   console.log(`[user:${userId}] message: ${url}`);
-
-  if (awaitingCookies && ADMIN_ID && String(userId) === String(ADMIN_ID)) {
-    awaitingCookies = false;
-    if (!url) {
-      await ctx.reply(translations[lang].admin.setcookies_empty);
-      return;
-    }
-    const lines = url.split('\n').filter(l => l && !l.startsWith('#')).length;
-    await writeFile(COOKIES_FILE, url);
-    console.log(`[cookies] saved ok: ${lines} lines`);
-    await ctx.reply(translations[lang].admin.setcookies_saved(lines));
-    return;
-  }
 
   if (!url) {
     await ctx.reply(translations[lang].errors.no_url);
