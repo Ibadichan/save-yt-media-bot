@@ -151,6 +151,7 @@ async function downloadAudioOnly(url) {
 
 const pendingMap = new Map(); // Map<userId, { videos: { url, title }[], thumbnailUrl, qualityLabels, audioAvailable, duration }>
 const downloadCountMap = new Map(); // Map<userId, number>
+let awaitingCookies = false;
 
 function getLang(ctx) {
   return ctx.from?.language_code === 'ru' ? 'ru' : 'en';
@@ -399,38 +400,10 @@ bot.callbackQuery('donate:other', async (ctx) => {
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
 });
 
-bot.on('message:document', async (ctx) => {
-  console.log(`[cookies] document from user:${ctx.from.id} file_name=${ctx.message.document?.file_name}`);
-  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) {
-    console.log(`[cookies] rejected: not admin (user:${ctx.from.id})`);
-    return;
-  }
-  const doc = ctx.message.document;
-  if (doc.file_name !== 'cookies.txt') {
-    await ctx.reply('Файл должен называться cookies.txt');
-    return;
-  }
-  try {
-    const file = await ctx.getFile();
-    const apiBase = (TELEGRAM_API_URL ?? 'https://api.telegram.org').replace(/\/$/, '');
-    let filePath = file.file_path ?? '';
-    // Local Bot API with --local returns file_path starting with /<token>/...
-    // Strip the leading token segment to avoid duplicating it in the URL
-    if (filePath.startsWith(`/${TELEGRAM_TOKEN}`)) {
-      filePath = filePath.slice(`/${TELEGRAM_TOKEN}`.length);
-    }
-    const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}/${filePath.replace(/^\//, '')}`;
-    console.log(`[cookies] fetching: ${url.replace(TELEGRAM_TOKEN, '<token>')}`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
-    const text = await res.text();
-    const lines = text.split('\n').filter(l => l && !l.startsWith('#')).length;
-    await writeFile(COOKIES_FILE, text);
-    console.log(`[cookies] saved ok: ${lines} lines`);
-    await ctx.reply(`cookies.txt обновлён (${lines} строк)`);
-  } catch (err) {
-    console.error('[cookies] error:', err);
-  }
+bot.command('setcookies', async (ctx) => {
+  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) return;
+  awaitingCookies = true;
+  await ctx.reply(translations[getLang(ctx)].admin.setcookies_prompt);
 });
 
 bot.on('message', async (ctx) => {
@@ -439,6 +412,19 @@ bot.on('message', async (ctx) => {
   const lang = getLang(ctx);
 
   console.log(`[user:${userId}] message: ${url}`);
+
+  if (awaitingCookies && ADMIN_ID && String(userId) === String(ADMIN_ID)) {
+    awaitingCookies = false;
+    if (!url) {
+      await ctx.reply(translations[lang].admin.setcookies_empty);
+      return;
+    }
+    const lines = url.split('\n').filter(l => l && !l.startsWith('#')).length;
+    await writeFile(COOKIES_FILE, url);
+    console.log(`[cookies] saved ok: ${lines} lines`);
+    await ctx.reply(translations[lang].admin.setcookies_saved(lines));
+    return;
+  }
 
   if (!url) {
     await ctx.reply(translations[lang].errors.no_url);
