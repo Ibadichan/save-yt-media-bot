@@ -407,8 +407,10 @@ bot.on('message:document', async (ctx) => {
     return;
   }
   const file = await ctx.getFile();
+  console.log('[cookies] file_path:', file.file_path);
   const apiBase = (TELEGRAM_API_URL ?? 'https://api.telegram.org').replace(/\/$/, '');
-  const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
+  const filePath = file.file_path ?? '';
+  const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
   const text = await res.text();
