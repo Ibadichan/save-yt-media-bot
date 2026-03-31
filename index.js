@@ -400,22 +400,37 @@ bot.callbackQuery('donate:other', async (ctx) => {
 });
 
 bot.on('message:document', async (ctx) => {
-  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) return;
+  console.log(`[cookies] document from user:${ctx.from.id} file_name=${ctx.message.document?.file_name}`);
+  if (!ADMIN_ID || String(ctx.from.id) !== String(ADMIN_ID)) {
+    console.log(`[cookies] rejected: not admin (user:${ctx.from.id})`);
+    return;
+  }
   const doc = ctx.message.document;
   if (doc.file_name !== 'cookies.txt') {
     await ctx.reply('Файл должен называться cookies.txt');
     return;
   }
-  const file = await ctx.getFile();
-  console.log('[cookies] file_path:', file.file_path);
-  const apiBase = (TELEGRAM_API_URL ?? 'https://api.telegram.org').replace(/\/$/, '');
-  const filePath = file.file_path ?? '';
-  const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
-  const text = await res.text();
-  await writeFile(COOKIES_FILE, text);
-  await ctx.reply(`cookies.txt обновлён (${text.split('\n').filter(l => l && !l.startsWith('#')).length} строк)`);
+  try {
+    const file = await ctx.getFile();
+    const apiBase = (TELEGRAM_API_URL ?? 'https://api.telegram.org').replace(/\/$/, '');
+    let filePath = file.file_path ?? '';
+    // Local Bot API with --local returns file_path starting with /<token>/...
+    // Strip the leading token segment to avoid duplicating it in the URL
+    if (filePath.startsWith(`/${TELEGRAM_TOKEN}`)) {
+      filePath = filePath.slice(`/${TELEGRAM_TOKEN}`.length);
+    }
+    const url = `${apiBase}/file/bot${TELEGRAM_TOKEN}/${filePath.replace(/^\//, '')}`;
+    console.log(`[cookies] fetching: ${url.replace(TELEGRAM_TOKEN, '<token>')}`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+    const text = await res.text();
+    const lines = text.split('\n').filter(l => l && !l.startsWith('#')).length;
+    await writeFile(COOKIES_FILE, text);
+    console.log(`[cookies] saved ok: ${lines} lines`);
+    await ctx.reply(`cookies.txt обновлён (${lines} строк)`);
+  } catch (err) {
+    console.error('[cookies] error:', err);
+  }
 });
 
 bot.on('message', async (ctx) => {
