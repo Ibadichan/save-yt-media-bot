@@ -406,27 +406,24 @@ bot.callbackQuery('donate:stars', async (ctx) => {
   const lang = getLang(ctx);
   const t = translations[lang].donate;
   await ctx.answerCallbackQuery();
+  const links = await Promise.all(
+    STARS_AMOUNTS.map((n) =>
+      ctx.api.createInvoiceLink(
+        t.stars_title,
+        t.stars_description,
+        `donation_${n}`,
+        'XTR',
+        [{ label: t.stars_title, amount: n }],
+        { provider_token: '' }
+      )
+    )
+  );
   const keyboard = new InlineKeyboard();
   STARS_AMOUNTS.forEach((n, i) => {
     if (i > 0 && i % 2 === 0) keyboard.row();
-    keyboard.text(`⭐ ${n}`, `stars:${n}`);
+    keyboard.url(`⭐ ${n}`, links[i]);
   });
   await ctx.reply(t.stars_description, { reply_markup: keyboard });
-});
-
-bot.callbackQuery(/^stars:\d+$/, async (ctx) => {
-  const lang = getLang(ctx);
-  const t = translations[lang].donate;
-  const amount = parseInt(ctx.callbackQuery.data.slice(6));
-  await ctx.answerCallbackQuery();
-  await ctx.replyWithInvoice(
-    t.stars_title,
-    t.stars_description,
-    `donation_${amount}`,
-    'XTR',
-    [{ label: t.stars_title, amount }],
-    { provider_token: '' }
-  );
 });
 
 bot.on('pre_checkout_query', async (ctx) => {
