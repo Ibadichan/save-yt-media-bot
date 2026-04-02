@@ -400,20 +400,32 @@ bot.callbackQuery('donate:other', async (ctx) => {
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
 });
 
+const STARS_AMOUNTS = [10, 50, 100, 500];
+
 bot.callbackQuery('donate:stars', async (ctx) => {
   const lang = getLang(ctx);
   const t = translations[lang].donate;
   await ctx.answerCallbackQuery();
+  const keyboard = new InlineKeyboard();
+  STARS_AMOUNTS.forEach((n, i) => {
+    if (i > 0 && i % 2 === 0) keyboard.row();
+    keyboard.text(`⭐ ${n}`, `stars:${n}`);
+  });
+  await ctx.reply(t.stars_description, { reply_markup: keyboard });
+});
+
+bot.callbackQuery(/^stars:\d+$/, async (ctx) => {
+  const lang = getLang(ctx);
+  const t = translations[lang].donate;
+  const amount = parseInt(ctx.callbackQuery.data.slice(6));
+  await ctx.answerCallbackQuery();
   await ctx.replyWithInvoice(
     t.stars_title,
     t.stars_description,
-    'donation',
+    `donation_${amount}`,
     'XTR',
-    [{ label: t.stars_title, amount: 1 }],
-    {
-      provider_token: '',
-      suggested_tip_amounts: [10, 50, 100, 500],
-    }
+    [{ label: t.stars_title, amount }],
+    { provider_token: '' }
   );
 });
 
