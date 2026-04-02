@@ -193,7 +193,9 @@ function buildDonateKeyboard(lang) {
   return new InlineKeyboard()
     .text(k.crypto, 'donate:crypto')
     .text(k.payments, 'donate:payments')
-    .text(k.other, 'donate:other');
+    .text(k.other, 'donate:other')
+    .row()
+    .text(k.stars, 'donate:stars');
 }
 
 const bot = new Bot(TELEGRAM_TOKEN, {
@@ -396,6 +398,35 @@ bot.callbackQuery('donate:other', async (ctx) => {
   const lang = getLang(ctx);
   await ctx.answerCallbackQuery();
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
+});
+
+bot.callbackQuery('donate:stars', async (ctx) => {
+  const lang = getLang(ctx);
+  const t = translations[lang].donate;
+  await ctx.answerCallbackQuery();
+  await ctx.replyWithInvoice(
+    t.stars_title,
+    t.stars_description,
+    'donation',
+    'XTR',
+    [{ label: t.stars_title, amount: 1 }],
+    {
+      provider_token: '',
+      max_tip_amount: 1000,
+      suggested_tip_amounts: [10, 50, 100, 500],
+    }
+  );
+});
+
+bot.on('pre_checkout_query', async (ctx) => {
+  await ctx.answerPreCheckoutQuery(true);
+});
+
+bot.on('message:successful_payment', async (ctx) => {
+  const lang = getLang(ctx);
+  const stars = ctx.message.successful_payment.total_amount;
+  console.log(`[stars] payment from user:${ctx.from.id} amount:${stars}`);
+  await ctx.reply(translations[lang].donate.stars_thanks);
 });
 
 bot.on('message', async (ctx) => {
