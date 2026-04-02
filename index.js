@@ -412,7 +412,6 @@ bot.callbackQuery('donate:stars', async (ctx) => {
     [{ label: t.stars_title, amount: 1 }],
     {
       provider_token: '',
-      max_tip_amount: 1000,
       suggested_tip_amounts: [10, 50, 100, 500],
     }
   );
