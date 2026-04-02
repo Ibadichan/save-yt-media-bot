@@ -412,9 +412,9 @@ bot.callbackQuery('donate:stars', async (ctx) => {
         t.stars_title,
         t.stars_description,
         `donation_${n}`,
+        '',
         'XTR',
-        [{ label: t.stars_title, amount: n }],
-        { provider_token: '' }
+        [{ label: t.stars_title, amount: n }]
       )
     )
   );
