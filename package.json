@@ -10,7 +10,7 @@
   "author": "Ivan Badicean <badican01117@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "node index.js",
+    "dev": "nodemon index.js",
     "start": "NODE_ENV=production node index.js"
   },
   "dependencies": {
@@ -18,5 +18,8 @@
     "express": "^4.22.1",
     "express-rate-limit": "^8.3.1",
     "grammy": "^1.41.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

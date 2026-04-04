@@ -1,0 +1,5 @@
+{
+  "watch": ["index.js", "translations.js", "utils.js"],
+  "ext": "js",
+  "ignore": ["node_modules"]
+}
