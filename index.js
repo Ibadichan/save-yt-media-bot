@@ -29,8 +29,6 @@ const {
   TELEGRAM_TOKEN,
   TELEGRAM_WEBHOOK_URL,
   TELEGRAM_API_URL,
-  DONATE_CARD,
-  DONATE_PEREVODILKA,
   BOT_USERNAME,
 } = process.env;
 
@@ -44,6 +42,9 @@ const WALLETS = {
   TON:        'UQBuvR1J5N6XOlA2tuQ0xMT1OgAp6XG0BAEuap3zNHhrb6ba',
   USDT_TRC20: 'TQze9DixKds37maVgmnuVENnUDT7UynaRy',
 };
+
+const DONATE_CARD = '5188 9402 9700 6058 (Daria Mafteuta)';
+const DONATE_PEREVODILKA = '077974315 (Дарья М.)';
 
 const COOKIES_FILE = process.env.COOKIES_FILE ?? 'cookies.txt';
 
@@ -150,6 +151,7 @@ async function downloadAudioOnly(url) {
 
 const pendingMap = new Map(); // Map<userId, { videos: { url, title }[], thumbnailUrl, qualityLabels, audioAvailable, duration }>
 const downloadCountMap = new Map(); // Map<userId, number>
+const awaitingStarsMap = new Map(); // Map<userId, true>
 
 function getLang(ctx) {
   return ctx.from?.language_code === 'ru' ? 'ru' : 'en';
@@ -160,10 +162,13 @@ function buildCryptoText(lang) {
   return [
     `<b>${t.crypto_label}</b>`,
     '',
-    `₿ BTC (BTC):\n<code>${WALLETS.BTC}</code>`,
-    `⟠ ETH (ERC20):\n<code>${WALLETS.ETH}</code>`,
     `ꘜ TON (TON):\n<code>${WALLETS.TON}</code>`,
+    '',
     `₮ USDT (TRC20):\n<code>${WALLETS.USDT_TRC20}</code>`,
+    '',
+    `₿ BTC (BTC):\n<code>${WALLETS.BTC}</code>`,
+    '',
+    `⟠ ETH (ERC20):\n<code>${WALLETS.ETH}</code>`,
     '',
     `<i>${t.copied}</i>`,
   ].join('\n');
@@ -173,6 +178,7 @@ function buildPaymentsText(lang) {
   const t = translations[lang].donate;
   const lines = [`<b>${t.payments_label}</b>`, ''];
   if (DONATE_CARD) lines.push(`💳 Visa/Mastercard:\n<code>${DONATE_CARD}</code>`);
+  if (DONATE_CARD && DONATE_PEREVODILKA) lines.push('');
   if (DONATE_PEREVODILKA) lines.push(`💸 Perevodilka PMR:\n<code>${DONATE_PEREVODILKA}</code>`);
   lines.push('', `<i>${t.copied}</i>`);
   return lines.join('\n');
@@ -181,21 +187,21 @@ function buildPaymentsText(lang) {
 function buildSupportText(lang) {
   const t = translations[lang].support;
   return [
-    `<b>${t.label}</b>`,
+    `👨‍💻 <b>${t.label}</b>`,
     '',
     `📧 ${t.email}: <code>badican01117@gmail.com</code>`,
-    `📬 ${t.telegram}: <a href="https://t.me/ibadichan">t.me/ibadichan</a>`,
+    `💬 ${t.telegram}: <a href="https://t.me/ibadichan">t.me/ibadichan</a>`,
   ].join('\n');
 }
 
 function buildDonateKeyboard(lang) {
   const k = translations[lang].donate.keyboard;
   return new InlineKeyboard()
+    .text(k.stars, 'donate:stars')
     .text(k.crypto, 'donate:crypto')
     .text(k.payments, 'donate:payments')
-    .text(k.other, 'donate:other')
     .row()
-    .text(k.stars, 'donate:stars');
+    .text(k.other, 'donate:other');
 }
 
 const bot = new Bot(TELEGRAM_TOKEN, {
@@ -253,16 +259,16 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
     try {
       if (type === 'audio') {
         outputPath = await downloadAudioOnly(url);
-        const audioCaption = BOT_USERNAME ? `💙 @${BOT_USERNAME}` : undefined;
+        const audioCaption = BOT_USERNAME ? `@${BOT_USERNAME}` : undefined;
         await ctx.replyWithAudio(
           new InputFile(createReadStream(outputPath), 'audio.mp3'),
           { title, caption: audioCaption }
         );
       } else {
         outputPath = await downloadVideoAudio(url, quality);
-        const captionLines = [`⭐ <b>${title}</b>`];
+        const captionLines = [`<b>${title}</b>`];
         if (quality) captionLines.push(`📥 ${quality}`);
-        if (BOT_USERNAME) captionLines.push(`💙 @${BOT_USERNAME}`);
+        if (BOT_USERNAME) captionLines.push(`@${BOT_USERNAME}`);
         await ctx.replyWithVideo(
           new InputFile(createReadStream(outputPath), 'video.mp4'),
           { caption: captionLines.join('\n'), parse_mode: 'HTML' }
@@ -362,8 +368,8 @@ bot.callbackQuery(/^dl:/, async (ctx) => {
 bot.command('start', async (ctx) => {
   const lang = getLang(ctx);
   pendingMap.delete(ctx.from.id);
-  await ctx.reply(translations[lang].greeting);
-  await ctx.reply(translations[lang].getting_started);
+  const username = BOT_USERNAME ? ` @${BOT_USERNAME}` : '';
+  await ctx.reply(translations[lang].greeting(username) + '\n\n' + translations[lang].getting_started);
   await ctx.reply(translations[lang].donate.appeal, { reply_markup: buildDonateKeyboard(lang) });
 });
 
@@ -400,7 +406,7 @@ bot.callbackQuery('donate:other', async (ctx) => {
   await ctx.reply(buildSupportText(lang), { parse_mode: 'HTML' });
 });
 
-const STARS_AMOUNTS = [10, 50, 100, 500];
+const STARS_AMOUNTS = [1, 5, 10, 50, 100, 500];
 
 bot.callbackQuery('donate:stars', async (ctx) => {
   const lang = getLang(ctx);
@@ -420,10 +426,18 @@ bot.callbackQuery('donate:stars', async (ctx) => {
   );
   const keyboard = new InlineKeyboard();
   STARS_AMOUNTS.forEach((n, i) => {
-    if (i > 0 && i % 2 === 0) keyboard.row();
+    if (i > 0 && i % 3 === 0) keyboard.row();
     keyboard.url(`⭐ ${n}`, links[i]);
   });
-  await ctx.reply(t.stars_description, { reply_markup: keyboard });
+  keyboard.row().text(t.keyboard.stars_custom, 'stars:custom');
+  await ctx.reply(t.stars_description, { reply_markup: keyboard, parse_mode: 'HTML' });
+});
+
+bot.callbackQuery('stars:custom', async (ctx) => {
+  const lang = getLang(ctx);
+  await ctx.answerCallbackQuery();
+  awaitingStarsMap.set(ctx.from.id, true);
+  await ctx.reply(translations[lang].donate.stars_enter_amount);
 });
 
 bot.on('pre_checkout_query', async (ctx) => {
@@ -443,6 +457,27 @@ bot.on('message', async (ctx) => {
   const lang = getLang(ctx);
 
   console.log(`[user:${userId}] message: ${url}`);
+
+  if (awaitingStarsMap.get(userId)) {
+    const t = translations[lang].donate;
+    const amount = parseInt(url);
+    if (!amount || amount < 1 || amount > 10000) {
+      await ctx.reply(t.stars_invalid_amount);
+      return;
+    }
+    awaitingStarsMap.delete(userId);
+    const link = await ctx.api.createInvoiceLink(
+      t.stars_title,
+      t.stars_description,
+      `donation_${amount}`,
+      '',
+      'XTR',
+      [{ label: t.stars_title, amount }]
+    );
+    const keyboard = new InlineKeyboard().url(`⭐ ${amount}`, link);
+    await ctx.reply(t.stars_description, { reply_markup: keyboard, parse_mode: 'HTML' });
+    return;
+  }
 
   if (!url) {
     await ctx.reply(translations[lang].errors.no_url);
@@ -496,7 +531,7 @@ bot.on('message', async (ctx) => {
         ? `https://www.youtube.com/watch?v=${extractVideoId(url)}`
         : url;
       videos.push({ url: canonicalUrl, title });
-      caption = `⭐ <b>${title}</b>`;
+      caption = `<b>${title}</b>`;
     }
 
     if (videos.length === 0) return;
