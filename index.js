@@ -430,7 +430,7 @@ bot.callbackQuery('donate:stars', async (ctx) => {
     keyboard.url(`⭐ ${n}`, links[i]);
   });
   keyboard.row().text(t.keyboard.stars_custom, 'stars:custom');
-  await ctx.reply(t.stars_description, { reply_markup: keyboard, parse_mode: 'HTML' });
+  await ctx.reply(t.stars_description, { reply_markup: keyboard });
 });
 
 bot.callbackQuery('stars:custom', async (ctx) => {
@@ -475,7 +475,7 @@ bot.on('message', async (ctx) => {
       [{ label: t.stars_title, amount }]
     );
     const keyboard = new InlineKeyboard().url(`⭐ ${amount}`, link);
-    await ctx.reply(t.stars_description, { reply_markup: keyboard, parse_mode: 'HTML' });
+    await ctx.reply(t.stars_description, { reply_markup: keyboard });
     return;
   }
 

@@ -47,7 +47,7 @@ const translations = {
       copied: "Tap an address to copy it.",
       other_payments: "Other payment methods — write me",
       stars_title: "Support the bot",
-      stars_description: "<b>Choose an amount or enter your own</b>",
+      stars_description: "Choose an amount or enter your own",
       stars_thanks: "Thank you for your support! Every star counts.",
       stars_enter_amount: "Enter the number of stars (1–10000):",
       stars_invalid_amount:
@@ -109,7 +109,7 @@ const translations = {
       copied: "Нажми на адрес, чтобы скопировать.",
       other_payments: "Другие способы оплаты — напиши мне",
       stars_title: "Поддержать бота",
-      stars_description: "<b>Выбери количество звёзд или укажи желаемое</b>",
+      stars_description: "Выбери количество звёзд или укажи желаемое",
       stars_thanks: "Спасибо за поддержку! Каждая звезда важна.",
       stars_enter_amount: "Введи количество звёзд (1–10000):",
       stars_invalid_amount: "Неверное количество. Введи число от 1 до 10000.",
