@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { createReadStream, existsSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { unlink, stat } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -95,6 +95,26 @@ function getQualityLabels(info) {
     .map((h) => `${h}p`);
 }
 
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatDuration(seconds) {
+  seconds = Math.floor(seconds);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatFileSize(bytes) {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
 function hasAudioTrack(info) {
   return (info.formats ?? []).some(
     (f) => f.acodec && f.acodec !== 'none' && (!f.vcodec || f.vcodec === 'none')
@@ -122,12 +142,13 @@ async function downloadVideoAudio(url, qualityLabel) {
   const args = buildYtdlpArgs([
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
+    '--embed-metadata',
     '-o', outputPath,
     '--no-playlist',
     url,
   ]);
 
-  await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 1024 * 1024 });
+  await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
   return outputPath;
 }
 
@@ -140,14 +161,17 @@ async function downloadAudioOnly(url) {
     '--audio-format', 'mp3',
     '--embed-metadata',
     '-o', `${prefix}.%(ext)s`,
+    '--print', 'after_move:%(abr)s',
     '--print', 'after_move:filepath',
     '--no-playlist',
     url,
   ]);
 
-  const { stdout } = await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 1024 * 1024 });
-  const outputPath = stdout.trim().split('\n').at(-1).trim() || `${prefix}.mp3`;
-  return outputPath;
+  const { stdout } = await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
+  const lines = stdout.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+  const outputPath = lines.at(-1) || `${prefix}.mp3`;
+  const abr = parseFloat(lines.at(-2)) || null;
+  return { outputPath, abr };
 }
 
 const pendingMap = new Map(); // Map<userId, { videos: { url, title }[], thumbnailUrl, qualityLabels, audioAvailable, duration }>
@@ -255,23 +279,40 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
 
   while (videoList.length > 0) {
     const { url, title, uploader } = videoList.at(-1);
+    const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_').slice(0, 200);
     let outputPath = null;
 
     try {
       if (type === 'audio') {
-        outputPath = await downloadAudioOnly(url);
-        const audioCaption = BOT_USERNAME ? `@${BOT_USERNAME}` : undefined;
+        const { outputPath: audioPath, abr } = await downloadAudioOnly(url);
+        outputPath = audioPath;
+        const { size: audioBytes } = await stat(outputPath);
+        const ta = translations[lang].audio;
+        const audioCaptionLines = [`🎵 <b>${escapeHtml(title)}</b>`];
+        const metaParts = [];
+        if (abr) metaParts.push(`🎧 <b>${ta.bitrate}:</b> ${Math.round(abr)} kbps`);
+        metaParts.push(`<b>${ta.size}:</b> ${formatFileSize(audioBytes)}`);
+        audioCaptionLines.push(metaParts.join(' | '));
+        audioCaptionLines.push(`🔗 <a href="${url}"><b>${ta.source}</b></a>`);
+        audioCaptionLines.push('');
+        if (BOT_USERNAME) audioCaptionLines.push(`@${BOT_USERNAME}`);
         await ctx.replyWithAudio(
-          new InputFile(createReadStream(outputPath), 'audio.mp3'),
-          { title, performer: uploader ?? undefined, caption: audioCaption }
+          new InputFile(createReadStream(outputPath), `${safeTitle}.mp3`),
+          { title, performer: uploader ?? undefined, caption: audioCaptionLines.join('\n'), parse_mode: 'HTML' }
         );
       } else {
         outputPath = await downloadVideoAudio(url, quality);
-        const captionLines = [`<b>${title}</b>`];
-        if (quality) captionLines.push(`📥 ${quality}`);
+        const { size: fileBytes } = await stat(outputPath);
+        const t = translations[lang].video;
+        const captionLines = [`🎬 <b>${escapeHtml(title)}</b>`];
+        if (uploader) captionLines.push(`👤 <b>${t.author}:</b> ${escapeHtml(uploader)}`);
+        if (duration) captionLines.push(`⏱ <b>${t.duration}:</b> ${formatDuration(duration)}`);
+        if (quality) captionLines.push(`⚙️ <b>${t.resolution}:</b> ${quality} | <b>${t.size}:</b> ${formatFileSize(fileBytes)}`);
+        captionLines.push(`🔗 <a href="${url}"><b>${t.source}</b></a>`);
+        captionLines.push('');
         if (BOT_USERNAME) captionLines.push(`@${BOT_USERNAME}`);
         await ctx.replyWithDocument(
-          new InputFile(createReadStream(outputPath), 'video.mp4'),
+          new InputFile(createReadStream(outputPath), `${safeTitle}.mp4`),
           { caption: captionLines.join('\n'), parse_mode: 'HTML' }
         );
       }
@@ -519,7 +560,7 @@ bot.on('message', async (ctx) => {
         thumbnailUrl = getBestThumbnailUrl(info);
       }
 
-      caption = `📋 <b>${playlist.title ?? 'Playlist'}</b>`;
+      caption = `📋 <b>${escapeHtml(playlist.title ?? 'Playlist')}</b>`;
     } else {
       const info = await getVideoInfo(url);
       const title = info.title ?? url;
@@ -532,7 +573,7 @@ bot.on('message', async (ctx) => {
         ? `https://www.youtube.com/watch?v=${extractVideoId(url)}`
         : url;
       videos.push({ url: canonicalUrl, title, uploader: info.uploader ?? info.channel ?? null });
-      caption = `<b>${title}</b>`;
+      caption = `<b>${escapeHtml(title)}</b>`;
     }
 
     if (videos.length === 0) return;

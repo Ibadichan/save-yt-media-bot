@@ -61,6 +61,19 @@ const translations = {
     help: {
       text: "❓ <b>How to use the bot</b>\n\nSend a video link — YouTube, TikTok, Instagram, Twitter/X, Vimeo and more.\n\n<b>Supported:</b>\n• Regular videos\n• YouTube playlists (quality from first video applies to all)\n• Audio-only (great for podcasts and audiobooks)\n\n<b>Limitations:</b>\n• Very long videos can only be downloaded as audio\n• Age-restricted or region-locked videos may fail\n\n<b>If something goes wrong:</b>\n• Try a lower quality\n• Resend the link\n• Use /start to reset if the bot seems stuck",
     },
+    audio: {
+      open_original: "Open original",
+      bitrate: "Bitrate",
+      size: "Size",
+      source: "Source",
+    },
+    video: {
+      author: "Author",
+      duration: "Duration",
+      resolution: "Resolution",
+      size: "Size",
+      source: "Source",
+    },
   },
   ru: {
     greeting: (username) => `🚀 Привет! Я${username} — скачиваю видео и аудио.`,
@@ -121,6 +134,19 @@ const translations = {
     },
     help: {
       text: "❓ <b>Как пользоваться ботом</b>\n\nОтправь ссылку на видео — YouTube, TikTok, Instagram, Twitter/X, Vimeo и другие.\n\n<b>Поддерживается:</b>\n• Обычные видео\n• Плейлисты YouTube (качество выбирается по первому видео)\n• Только аудио (удобно для подкастов и аудиокниг)\n\n<b>Ограничения:</b>\n• Очень длинные видео можно скачать только как аудио\n• Видео с возрастным ограничением или региональной блокировкой могут не работать\n\n<b>Если что-то пошло не так:</b>\n• Попробуй другое качество\n• Отправь ссылку ещё раз\n• Используй /start чтобы сбросить бота, если он завис",
+    },
+    audio: {
+      open_original: "Открыть оригинал",
+      bitrate: "Битрейт",
+      size: "Размер",
+      source: "Источник",
+    },
+    video: {
+      author: "Автор",
+      duration: "Длительность",
+      resolution: "Разрешение",
+      size: "Размер",
+      source: "Источник",
     },
   },
 };
