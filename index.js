@@ -85,8 +85,7 @@ async function getPlaylistInfo(playlistUrl) {
 function getQualityLabels(info) {
   const heights = [...new Set(
     (info.formats ?? [])
-      .filter((f) => f.vcodec && f.vcodec !== 'none' && f.height &&
-                     (!f.dynamic_range || f.dynamic_range === 'SDR'))
+      .filter((f) => f.vcodec && f.vcodec !== 'none' && f.height)
       .map((f) => f.height)
   )];
   return heights
@@ -133,6 +132,7 @@ async function downloadVideoAudio(url, qualityLabel) {
   const formatSelector = height
     ? [
         `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]`,
+        `bestvideo[height<=${height}][vcodec^=avc]+bestaudio[ext=m4a]`,
         `bestvideo[height<=${height}]+bestaudio`,
         `best[height<=${height}]`,
         'best',
@@ -143,6 +143,7 @@ async function downloadVideoAudio(url, qualityLabel) {
     '-f', formatSelector,
     '--merge-output-format', 'mp4',
     '--embed-metadata',
+    '--concurrent-fragments', '4',
     '-o', outputPath,
     '--no-playlist',
     url,
