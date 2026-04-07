@@ -138,6 +138,7 @@ async function downloadAudioOnly(url) {
     '-f', 'bestaudio[ext=m4a]/bestaudio',
     '-x',
     '--audio-format', 'mp3',
+    '--embed-metadata',
     '-o', `${prefix}.%(ext)s`,
     '--print', 'after_move:filepath',
     '--no-playlist',
@@ -253,7 +254,7 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
   }
 
   while (videoList.length > 0) {
-    const { url, title } = videoList.at(-1);
+    const { url, title, uploader } = videoList.at(-1);
     let outputPath = null;
 
     try {
@@ -262,7 +263,7 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
         const audioCaption = BOT_USERNAME ? `@${BOT_USERNAME}` : undefined;
         await ctx.replyWithAudio(
           new InputFile(createReadStream(outputPath), 'audio.mp3'),
-          { title, caption: audioCaption }
+          { title, performer: uploader ?? undefined, caption: audioCaption }
         );
       } else {
         outputPath = await downloadVideoAudio(url, quality);
@@ -530,7 +531,7 @@ bot.on('message', async (ctx) => {
       const canonicalUrl = isYouTubeUrl(url)
         ? `https://www.youtube.com/watch?v=${extractVideoId(url)}`
         : url;
-      videos.push({ url: canonicalUrl, title });
+      videos.push({ url: canonicalUrl, title, uploader: info.uploader ?? info.channel ?? null });
       caption = `<b>${title}</b>`;
     }
 
