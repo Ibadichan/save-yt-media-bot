@@ -270,7 +270,7 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
         const captionLines = [`<b>${title}</b>`];
         if (quality) captionLines.push(`📥 ${quality}`);
         if (BOT_USERNAME) captionLines.push(`@${BOT_USERNAME}`);
-        await ctx.replyWithVideo(
+        await ctx.replyWithDocument(
           new InputFile(createReadStream(outputPath), 'video.mp4'),
           { caption: captionLines.join('\n'), parse_mode: 'HTML' }
         );
