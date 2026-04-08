@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { createReadStream, existsSync } from 'fs';
-import { unlink, stat } from 'fs/promises';
+import { unlink, stat, readdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -120,13 +120,40 @@ function hasAudioTrack(info) {
   );
 }
 
+const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB — Telegram local Bot API limit
+
+function estimateVideoSize(info, qualityLabel) {
+  const height = qualityLabel === 'best' ? Infinity : parseInt(qualityLabel);
+  const formats = info.formats ?? [];
+  const videoFormat = formats
+    .filter(f => f.vcodec && f.vcodec !== 'none' && f.height && f.height <= height)
+    .sort((a, b) => (b.height ?? 0) - (a.height ?? 0))[0];
+  const audioFormat = formats
+    .filter(f => f.acodec && f.acodec !== 'none' && (!f.vcodec || f.vcodec === 'none'))[0];
+  const videoSize = videoFormat?.filesize ?? videoFormat?.filesize_approx ?? null;
+  const audioSize = audioFormat?.filesize ?? audioFormat?.filesize_approx ?? null;
+  if (videoSize === null && audioSize === null) return null;
+  return (videoSize ?? 0) + (audioSize ?? 0);
+}
+
 function getBestThumbnailUrl(info) {
   return info.thumbnail ?? null;
 }
 
+async function cleanupTmpPrefix(dir, basename) {
+  try {
+    const files = await readdir(dir);
+    await Promise.all(
+      files.filter(f => f.startsWith(basename)).map(f => unlink(join(dir, f)).catch(() => {}))
+    );
+  } catch {}
+}
+
 async function downloadVideoAudio(url, qualityLabel) {
   const height = parseInt(qualityLabel);
-  const prefix = join(tmpdir(), randomBytes(8).toString('hex'));
+  const dir = tmpdir();
+  const basename = randomBytes(8).toString('hex');
+  const prefix = join(dir, basename);
   const outputPath = `${prefix}.mp4`;
 
   const formatSelector = height
@@ -149,12 +176,19 @@ async function downloadVideoAudio(url, qualityLabel) {
     url,
   ]);
 
-  await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
+  try {
+    await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
+  } catch (err) {
+    await cleanupTmpPrefix(dir, basename);
+    throw err;
+  }
   return outputPath;
 }
 
 async function downloadAudioOnly(url) {
-  const prefix = join(tmpdir(), randomBytes(8).toString('hex'));
+  const dir = tmpdir();
+  const basename = randomBytes(8).toString('hex');
+  const prefix = join(dir, basename);
 
   const args = buildYtdlpArgs([
     '-f', 'bestaudio[ext=m4a]/bestaudio',
@@ -168,7 +202,13 @@ async function downloadAudioOnly(url) {
     url,
   ]);
 
-  const { stdout } = await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 }));
+  } catch (err) {
+    await cleanupTmpPrefix(dir, basename);
+    throw err;
+  }
   const lines = stdout.trim().split('\n').map((l) => l.trim()).filter(Boolean);
   const outputPath = lines.at(-1) || `${prefix}.mp3`;
   const abr = parseFloat(lines.at(-2)) || null;
@@ -246,7 +286,15 @@ async function processMedia(ctx, quality, type = 'video+audio', sourceMsg = null
     return;
   }
 
-  const { videos: videoList, thumbnailUrl, duration } = entry;
+  const { videos: videoList, thumbnailUrl, duration, sizeByQuality } = entry;
+
+  if (type !== 'audio' && sizeByQuality) {
+    const estimatedSize = sizeByQuality[quality ?? 'best'] ?? null;
+    if (estimatedSize !== null && estimatedSize > MAX_FILE_BYTES) {
+      await ctx.reply(`${translations[lang].errors.file_too_large} (~${formatFileSize(estimatedSize)})`);
+      return;
+    }
+  }
 
   if (type !== 'audio' && MAX_VIDEO_DURATION_SEC && duration && duration > MAX_VIDEO_DURATION_SEC) {
     const maxMin = Math.round(MAX_VIDEO_DURATION_SEC / 60);
@@ -541,6 +589,7 @@ bot.on('message', async (ctx) => {
     let thumbnailUrl = null;
     let caption = null;
     let duration = null;
+    let sizeByQuality = null;
 
     if (isYouTubePlaylist(url)) {
       const playlist = await getPlaylistInfo(url);
@@ -569,6 +618,9 @@ bot.on('message', async (ctx) => {
       qualityLabels = getQualityLabels(info);
       audioAvailable = hasAudioTrack(info);
       thumbnailUrl = getBestThumbnailUrl(info);
+      sizeByQuality = Object.fromEntries(
+        [...qualityLabels, 'best'].map(q => [q, estimateVideoSize(info, q)])
+      );
       // Normalise YouTube URLs to canonical form; keep other URLs as-is
       const canonicalUrl = isYouTubeUrl(url)
         ? `https://www.youtube.com/watch?v=${extractVideoId(url)}`
@@ -579,7 +631,7 @@ bot.on('message', async (ctx) => {
 
     if (videos.length === 0) return;
 
-    pendingMap.set(userId, { videos, thumbnailUrl, qualityLabels, audioAvailable, duration });
+    pendingMap.set(userId, { videos, thumbnailUrl, qualityLabels, audioAvailable, duration, sizeByQuality });
 
     const keyboard = buildQualityKeyboard(lang, qualityLabels, audioAvailable);
 
