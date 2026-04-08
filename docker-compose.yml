@@ -28,8 +28,6 @@ services:
     networks:
       - bot-network
     command: >
-      --api-id=${TELEGRAM_API_ID}
-      --api-hash=${TELEGRAM_API_HASH}
       --http-port=8081
       --local
       --dir=/var/lib/telegram-bot-api
