@@ -85,10 +85,9 @@ docker compose up -d --build
 ```bash
 cd /home/deployer/tiktok-zoomer-ok-bot
 git pull
-docker compose up -d --build bot
+docker compose build bot
+docker compose up -d bot
 ```
-
-> Пересобирается только контейнер бота. Bot API не трогается.
 
 ### Обновить cookies.txt
 
