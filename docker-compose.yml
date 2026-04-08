@@ -11,7 +11,7 @@ services:
       - ../data/logs:/app/logs
     depends_on:
       telegram-bot-api:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bot-network
 
