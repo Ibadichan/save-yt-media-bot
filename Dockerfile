@@ -11,7 +11,7 @@ RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 COPY . .
 
-RUN mkdir -p /app/logs
+RUN mkdir -p /app/logs && chown -R node:node /app/logs
 
 ENV NODE_ENV=production
 
