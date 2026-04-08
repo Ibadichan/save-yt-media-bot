@@ -7,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
-      - ../data/cookies.txt:/app/cookies.txt:ro
+      - ../data/cookies.txt:/app/cookies.txt
       - ../data/logs:/app/logs
     depends_on:
       telegram-bot-api:
