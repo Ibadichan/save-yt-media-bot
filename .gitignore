@@ -76,7 +76,7 @@ web_modules/
 .env
 
 # Cookies file (Netscape format, export from browser)
-# cookies.txt
+cookies.txt
 .env.development.local
 .env.test.local
 .env.production.local

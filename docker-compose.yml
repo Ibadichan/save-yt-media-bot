@@ -1,0 +1,45 @@
+services:
+  bot:
+    build: .
+    container_name: tiktok-zoomer-ok-bot
+    restart: unless-stopped
+    env_file: ../data/.env.production.local
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ../data/cookies.txt:/app/cookies.txt:ro
+      - ../data/logs:/app/logs
+    depends_on:
+      telegram-bot-api:
+        condition: service_healthy
+    networks:
+      - bot-network
+
+  telegram-bot-api:
+    build: ../telegram-bot-api
+    image: telegram-bot-api:latest
+    container_name: tg-bot-api
+    restart: unless-stopped
+    env_file: ../data/.env.production.local
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - ../data/bot-files:/var/lib/telegram-bot-api
+    networks:
+      - bot-network
+    command: >
+      --api-id=${TELEGRAM_API_ID}
+      --api-hash=${TELEGRAM_API_HASH}
+      --http-port=8081
+      --local
+      --dir=/var/lib/telegram-bot-api
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8081 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  bot-network:
+    driver: bridge

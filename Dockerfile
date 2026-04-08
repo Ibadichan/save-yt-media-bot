@@ -6,11 +6,15 @@ RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip && \
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN corepack enable && pnpm install --production
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 COPY . .
 
+RUN mkdir -p /app/logs
+
 ENV NODE_ENV=production
+
+USER node
 
 CMD ["node", "index.js"]
