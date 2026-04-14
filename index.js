@@ -592,6 +592,9 @@ bot.on('message', async (ctx) => {
     let duration = null;
     let sizeByQuality = null;
 
+    const searchingMsg = await ctx.reply(translations[lang].status.searching).catch(() => null);
+    const deleteSearchingMsg = () => searchingMsg && ctx.api.deleteMessage(searchingMsg.chat.id, searchingMsg.message_id).catch(() => {});
+
     if (isYouTubePlaylist(url)) {
       const playlist = await getPlaylistInfo(url);
 
@@ -630,18 +633,23 @@ bot.on('message', async (ctx) => {
       caption = `<b>${escapeHtml(title)}</b>`;
     }
 
-    if (videos.length === 0) return;
+    if (videos.length === 0) {
+      await deleteSearchingMsg();
+      return;
+    }
 
     pendingMap.set(userId, { videos, thumbnailUrl, qualityLabels, audioAvailable, duration, sizeByQuality });
 
     const keyboard = buildQualityKeyboard(lang, qualityLabels, audioAvailable);
 
+    await deleteSearchingMsg();
     if (thumbnailUrl) {
       await ctx.replyWithPhoto(thumbnailUrl, { caption, parse_mode: 'HTML', reply_markup: keyboard });
     } else {
       await ctx.reply(caption, { parse_mode: 'HTML', reply_markup: keyboard });
     }
   } catch (error) {
+    await deleteSearchingMsg();
     console.error(error);
     const stderr = (error.stderr ?? '').trim();
     const brief = (stderr || (error.message ?? '')).split('\n').filter(l => l.trim()).at(-1)?.slice(0, 200) ?? '';
