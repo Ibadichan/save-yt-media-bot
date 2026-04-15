@@ -161,6 +161,8 @@ async function downloadVideoAudio(url, qualityLabel) {
         `bestvideo[height<=${height}][vcodec^=avc][ext=mp4]+bestaudio[ext=m4a]`,
         `bestvideo[height<=${height}][vcodec^=avc]+bestaudio[ext=m4a]`,
         `bestvideo[height<=${height}][vcodec^=avc]+bestaudio`,
+        `bestvideo[height<=${height}][ext=mp4][vcodec!*=vp09]+bestaudio[ext=m4a]`,
+        `bestvideo[height<=${height}][ext=mp4][vcodec!*=vp09]+bestaudio`,
         `bestvideo[height<=${height}]+bestaudio`,
         `best[height<=${height}]`,
         'best',
