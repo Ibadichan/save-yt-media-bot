@@ -583,6 +583,9 @@ bot.on('message', async (ctx) => {
     return;
   }
 
+  const searchingMsg = await ctx.reply(translations[lang].status.searching).catch(() => null);
+  const deleteSearchingMsg = () => searchingMsg && ctx.api.deleteMessage(searchingMsg.chat.id, searchingMsg.message_id).catch(() => {});
+
   try {
     let videos = [];
     let qualityLabels = [];
@@ -591,9 +594,6 @@ bot.on('message', async (ctx) => {
     let caption = null;
     let duration = null;
     let sizeByQuality = null;
-
-    const searchingMsg = await ctx.reply(translations[lang].status.searching).catch(() => null);
-    const deleteSearchingMsg = () => searchingMsg && ctx.api.deleteMessage(searchingMsg.chat.id, searchingMsg.message_id).catch(() => {});
 
     if (isYouTubePlaylist(url)) {
       const playlist = await getPlaylistInfo(url);
