@@ -161,8 +161,6 @@ async function downloadVideoAudio(url, qualityLabel) {
         `bestvideo[height<=${height}][vcodec^=avc][ext=mp4]+bestaudio[ext=m4a]`,
         `bestvideo[height<=${height}][vcodec^=avc]+bestaudio[ext=m4a]`,
         `bestvideo[height<=${height}][vcodec^=avc]+bestaudio`,
-        `bestvideo[height<=${height}][ext=mp4][vcodec!*=vp09]+bestaudio[ext=m4a]`,
-        `bestvideo[height<=${height}][ext=mp4][vcodec!*=vp09]+bestaudio`,
         `bestvideo[height<=${height}]+bestaudio`,
         `best[height<=${height}]`,
         'best',
@@ -185,6 +183,31 @@ async function downloadVideoAudio(url, qualityLabel) {
     await cleanupTmpPrefix(dir, basename);
     throw err;
   }
+
+  // Re-encode VP9 → H.264 for macOS/Telegram compatibility
+  try {
+    const { stdout: probeOut } = await execFileAsync('ffprobe', [
+      '-v', 'quiet', '-select_streams', 'v:0',
+      '-show_entries', 'stream=codec_name',
+      '-of', 'json', outputPath,
+    ]);
+    const videoCodec = JSON.parse(probeOut).streams?.[0]?.codec_name;
+    if (videoCodec === 'vp9') {
+      const recodedPath = `${prefix}_h264.mp4`;
+      await execFileAsync('ffmpeg', [
+        '-i', outputPath,
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+        '-c:a', 'copy',
+        '-movflags', '+faststart',
+        recodedPath,
+      ]);
+      await unlink(outputPath);
+      await execFileAsync('mv', [recodedPath, outputPath]);
+    }
+  } catch {
+    // ffprobe/re-encode failed — send original file as-is
+  }
+
   return outputPath;
 }
 
