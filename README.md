@@ -111,6 +111,18 @@ cd /home/deployer/tiktok-zoomer-ok-bot
 docker compose up -d bot
 ```
 
+### Обновить yt-dlp (ошибка "Requested format is not available")
+
+YouTube часто меняет формат отдачи, и yt-dlp регулярно устаревает. Обычная пересборка
+не поможет — Docker кэширует слой с `pip3 install yt-dlp`, если строчка в Dockerfile не
+менялась. Нужен `--no-cache`:
+
+```bash
+cd /home/deployer/tiktok-zoomer-ok-bot
+docker compose build --no-cache bot
+docker compose up -d bot
+```
+
 ### Полезные команды
 
 ```bash
