@@ -39,12 +39,12 @@ const MAX_VIDEO_DURATION_SEC = process.env.MAX_VIDEO_DURATION_MIN
 const WALLETS = {
   BTC:        '1KgxUoCK87hPrLVDXYwpQzZqS6Mus7D6N8',
   ETH:        '0xb0db7cb3c18a02c969416d4ec06bdd703d1756f8',
-  TON:        'UQBuvR1J5N6XOlA2tuQ0xMT1OgAp6XG0BAEuap3zNHhrb6ba',
+  GRAM:       'UQBuvR1J5N6XOlA2tuQ0xMT1OgAp6XG0BAEuap3zNHhrb6ba',
   USDT_TRC20: 'TQze9DixKds37maVgmnuVENnUDT7UynaRy',
 };
 
 const DONATE_CARD = '5188 9402 9700 6058 (Daria Mafteuta)';
-const DONATE_PEREVODILKA = '077974315 (Дарья М.)';
+const DONATE_CARD_PMR = '9104 0122 2368 9523 (IVAN BADICEAN)';
 
 const COOKIES_FILE = process.env.COOKIES_FILE ?? 'cookies.txt';
 
@@ -254,7 +254,7 @@ function buildCryptoText(lang) {
   return [
     `<b>${t.crypto_label}</b>`,
     '',
-    `ꘜ TON (TON):\n<code>${WALLETS.TON}</code>`,
+    `ꘜ GRAM (GRAM):\n<code>${WALLETS.GRAM}</code>`,
     '',
     `₮ USDT (TRC20):\n<code>${WALLETS.USDT_TRC20}</code>`,
     '',
@@ -270,8 +270,8 @@ function buildPaymentsText(lang) {
   const t = translations[lang].donate;
   const lines = [`<b>${t.payments_label}</b>`, ''];
   if (DONATE_CARD) lines.push(`💳 Visa/Mastercard:\n<code>${DONATE_CARD}</code>`);
-  if (DONATE_CARD && DONATE_PEREVODILKA) lines.push('');
-  if (DONATE_PEREVODILKA) lines.push(`💸 Perevodilka PMR:\n<code>${DONATE_PEREVODILKA}</code>`);
+  if (DONATE_CARD && DONATE_CARD_PMR) lines.push('');
+  if (DONATE_CARD_PMR) lines.push(`💳 Agroprombank PMR:\n<code>${DONATE_CARD_PMR}</code>`);
   lines.push('', `<i>${t.copied}</i>`);
   return lines.join('\n');
 }
