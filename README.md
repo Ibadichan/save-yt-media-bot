@@ -15,6 +15,8 @@ Node.js бот             (Docker-контейнер, порт 3000)
 - Оба сервиса общаются **внутри Docker-сети** `bot-network` — в интернет трафик не выходит
 - nginx проксирует внешний HTTPS на Bot API (`api-telegram.duckdns.org` → `127.0.0.1:8081`) — нужен только для внешнего доступа к Bot API
 - Бот стартует только после того как Bot API прошёл healthcheck (`depends_on: condition: service_healthy`)
+- Третий контейнер `bgutil-provider` генерирует PO Token для yt-dlp (обход бот-детекта YouTube), не требует
+  доступа снаружи, общается с ботом только по внутренней Docker-сети
 
 ## Структура на VPS
 
@@ -49,6 +51,8 @@ TELEGRAM_WEBHOOK_URL=   # локально: https://api-telegram.duckdns.org
 ADMIN_ID=               # Telegram user ID администратора
 BOT_USERNAME=           # username бота без @
 MAX_VIDEO_DURATION_MIN= # максимальная длина видео в минутах
+BGUTIL_PROVIDER_URL=    # только прод: http://bgutil-provider:4416
+                        # PO Token провайдер для yt-dlp (обход "Sign in to confirm you're not a bot")
 ```
 
 ## Локальная разработка

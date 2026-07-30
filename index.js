@@ -30,6 +30,7 @@ const {
   TELEGRAM_WEBHOOK_URL,
   TELEGRAM_API_URL,
   BOT_USERNAME,
+  BGUTIL_PROVIDER_URL,
 } = process.env;
 
 const MAX_VIDEO_DURATION_SEC = process.env.MAX_VIDEO_DURATION_MIN
@@ -55,6 +56,9 @@ function buildYtdlpArgs(extraArgs = []) {
   }
   if (existsSync(COOKIES_FILE)) {
     args.push('--cookies', COOKIES_FILE);
+  }
+  if (BGUTIL_PROVIDER_URL) {
+    args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${BGUTIL_PROVIDER_URL}`);
   }
   return [...args, ...extraArgs];
 }
