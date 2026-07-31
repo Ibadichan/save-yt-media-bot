@@ -31,6 +31,7 @@ const {
   TELEGRAM_API_URL,
   BOT_USERNAME,
   BGUTIL_PROVIDER_URL,
+  YTDLP_PROXY,
 } = process.env;
 
 const MAX_VIDEO_DURATION_SEC = process.env.MAX_VIDEO_DURATION_MIN
@@ -59,6 +60,9 @@ function buildYtdlpArgs(extraArgs = []) {
   }
   if (BGUTIL_PROVIDER_URL) {
     args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${BGUTIL_PROVIDER_URL}`);
+  }
+  if (YTDLP_PROXY) {
+    args.push('--proxy', YTDLP_PROXY);
   }
   return [...args, ...extraArgs];
 }

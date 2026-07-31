@@ -53,6 +53,8 @@ BOT_USERNAME=           # username бота без @
 MAX_VIDEO_DURATION_MIN= # максимальная длина видео в минутах
 BGUTIL_PROVIDER_URL=    # только прод: http://bgutil-provider:4416
                         # PO Token провайдер для yt-dlp (обход "Sign in to confirm you're not a bot")
+YTDLP_PROXY=            # резидентный прокси для yt-dlp, вида http://user:pass@host:port
+                        # VPS-датацентр-IP палится YouTube — прокси отдаёт запросы с residential IP
 ```
 
 ## Локальная разработка
