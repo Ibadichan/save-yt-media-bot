@@ -50,7 +50,7 @@ const DONATE_CARD_PMR = '9104 0122 2368 9523 (IVAN BADICEAN)';
 
 const COOKIES_FILE = process.env.COOKIES_FILE ?? 'cookies.txt';
 
-function buildYtdlpArgs(extraArgs = []) {
+function buildYtdlpArgs(extraArgs = [], url = null) {
   const args = ['--no-check-certificates', '--js-runtimes', `node:${process.execPath}`, '--remote-components', 'ejs:github'];
   if (FFMPEG_PATH && FFMPEG_PATH !== 'ffmpeg') {
     args.push('--ffmpeg-location', FFMPEG_PATH);
@@ -61,14 +61,17 @@ function buildYtdlpArgs(extraArgs = []) {
   if (BGUTIL_PROVIDER_URL) {
     args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${BGUTIL_PROVIDER_URL}`);
   }
-  if (YTDLP_PROXY) {
+  // YTDLP_PROXY works around YouTube blocking the VPS's datacenter IP —
+  // other platforms don't have that problem, and the residential proxy
+  // has occasionally reset connections to them, so scope it to YouTube only.
+  if (YTDLP_PROXY && url && isYouTubeUrl(url)) {
     args.push('--proxy', YTDLP_PROXY);
   }
   return [...args, ...extraArgs];
 }
 
 async function getVideoInfo(url) {
-  const args = buildYtdlpArgs(['--dump-json', '--no-playlist', url]);
+  const args = buildYtdlpArgs(['--dump-json', '--no-playlist', url], url);
   const { stdout } = await execFileAsync(YTDLP_PATH, args, {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 30_000,
@@ -82,7 +85,7 @@ async function getPlaylistInfo(playlistUrl) {
     '--dump-single-json',
     '--no-warnings',
     playlistUrl,
-  ]);
+  ], playlistUrl);
   const { stdout } = await execFileAsync(YTDLP_PATH, args, {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 60_000,
@@ -183,7 +186,7 @@ async function downloadVideoAudio(url, qualityLabel) {
     '-o', outputPath,
     '--no-playlist',
     url,
-  ]);
+  ], url);
 
   try {
     await execFileAsync(YTDLP_PATH, args, { timeout: 10 * 60_000, maxBuffer: 10 * 1024 * 1024 });
@@ -234,7 +237,7 @@ async function downloadAudioOnly(url) {
     '--print', 'after_move:filepath',
     '--no-playlist',
     url,
-  ]);
+  ], url);
 
   let stdout;
   try {
